@@ -14,6 +14,7 @@ import matplotlib.patches as mpatches
 import astropy.io.fits as fits
 from astropy.table import Table, Column
 from trm import subs
+from itertools import zip_longest as longest
 
 parser = argparse.ArgumentParser(description = usage)
 
@@ -33,11 +34,10 @@ parser.add_argument('-n',
 args = parser.parse_args()
 sdss = args.sdss
 
-avg_flux = 0
-t = Table(names=('H-alpha', 'H-alpha σ^2', 'H-beta', 'H-beta σ^2', 'HeII', 'HeII σ^2'), 
-		  dtype=('f8', 'f8', 'f8', 'f8', 'f8', 'f8'))
+t = Table(names=('Name','H-alpha','H-alpha σ^2','H-beta','H-beta σ^2','HeI','HeI σ^2','HeII','HeII σ^2', 'class'), 
+		  dtype=('U15','f8','f8','f8','f8','f8','f8','f8','f8','i4'))
 
-def plot_spectra(w, f):
+def plot_spectra(w, f, element):
     nb,d = np.histogram(w,args.nbin)
     wb,d = np.histogram(w,args.nbin, weights=w)
     fb,d = np.histogram(w,args.nbin, weights=f)
@@ -47,31 +47,31 @@ def plot_spectra(w, f):
 	
     fig=plt.figure(figsize = (12, 6))
     plt.plot(wb, fb, 'b')
-    title = 'H-alpha lines of ' + spec[spec.rfind('/') + 1:] + ', ' + pos
+    title = '%s lines of ' %element + spec[spec.rfind('/') + 1:] + ', ' + pos
     plt.title(title.replace('_', '-'))
     plt.xlabel('Wavelength [\AA]')
     plt.show()
-    
-def total_flux(wavelength):
+
+def flux_var(wavelength):
     _index = np.nonzero(w > wavelength)[0][0]
     _range = range(_index - 23, _index + 23)
     
-    t_flux = sum([(w[i] - w[i-1]) * f[i] for i in _range])
+    t_flux = sum(w_d[_range] * f[_range])
     t_var = sum([(1/iv[i]) * (w_d[i] ** 2) for i in _range if iv[i] != 0])
-    return t_flux, t_var
     
+    return t_flux, t_var, _index
+
+w_total, f_total, ix = [0]*len(sdss), [0]*len(sdss), 0
+
 for spec in sdss:
-    #print(spec)
     hdul = fits.open(spec)
     head  = hdul[0].header
     ra  = head['PLUG_RA']/15.
     dec = head['PLUG_DEC']
     pos = subs.d2hms(ra, sep = ' ', dp = 2) + ' ' + \
 		  subs.d2hms(dec, sep = ' ', dp = 1, sign = True)
-    #print('Position = ',pos)
-
-    #print(hdul[3].data)
-   
+    # print('Position = ',pos)
+    
    	# Store fluxes and wavelengths in arrays 
     table = hdul[1].data
     w  = subs.vac2air(10. ** table['loglam'])
@@ -81,27 +81,54 @@ for spec in sdss:
     ok = iv > 0.
     w  = w[ok]
     f  = f[ok]
+    w_total[ix] = w
+    f_total[ix] = f
+    ix += 1
     w_d = w_d[ok]
+	
+    h_a = flux_var(6561)
+    h_b = flux_var(4862)
+    he1 = flux_var(5876)
+    he2 = flux_var(4686)
     
-    #for i in range(0, w.size - 1):
-    #   print(w[i] * 1.0)
-
-    t.add_row([total_flux(6561.14892578)[0], total_flux(6561.14892578)[1], \
-			   total_flux(4862.712890625)[0], total_flux(4862.712890625)[1], \
-			   total_flux(4686.82128906)[0], total_flux(4686.82128906)[1]])
+    if spec[spec.find('-') + 1:spec.find('-') + 5] == '0266':
+        cls = 0
+    else:
+        cls = 1
+    
+    t.add_row([spec[spec.find('-') + 1:spec.find('.')],
+			  h_a[0], h_a[1],
+			  h_b[0], h_b[1],
+			  he1[0], he1[1],
+			  he2[0], he2[1],
+			  cls])
 			   
-    '''#Plot the entire spectra
-    plot_spectra(w,f)
+    '''# Entire spectra
+    plot_spectra(w,f, '')
     
-    # Plot H-alpha lines
-    plot_spectra(w[ha_index - 23:ha_index + 23], \
-                 f[ha_index - 23:ha_index + 23])
+    # H-alpha
+    plot_spectra(w[h_a[2] - 50:h_a[2] + 50],
+                 f[h_a[2] - 50:h_a[2] + 50],
+                 'H-alpha')
     
-    # Plot H-beta lines
-    plot_spectra(w[hb_index - 25:hb_index + 25], \
-                 f[hb_index - 25:hb_index + 25])
+    # H-beta 
+    plot_spectra(w[h_b[2] - 50:h_b[2] + 50],
+                 f[h_b[2] - 50:h_b[2] + 50],
+                 'H-beta')
                  
-    # Plot HeII lines
-    plot_spectra(w[he2_index - 25:he2_index + 25], \
-                 f[he2_index - 25:he2_index + 25])'''
-print(t)
+    # HeI
+    plot_spectra(w[he1[2] - 50:he1[2] + 50],
+                 f[he1[2] - 50:he1[2] + 50],
+                 'HeI')
+                 
+    # HeII
+    plot_spectra(w[he2[2] - 50:he2[2] + 50],
+                 f[he2[2] - 50:he2[2] + 50],
+                 'HeII')'''
+w_total = sorted([sum(x)/np.count_nonzero(x) for x in longest(*w_total, fillvalue = 0)])
+f_total = [sum(x)/np.count_nonzero(x) for x in longest(*f_total, fillvalue = 0)]
+
+plot_spectra(w_total, f_total, '')
+f = open('table.txt', 'w+')
+reordered_tabe = Table(np.random.permutation(t))
+f.write(str(reordered_tabe) + "\n")
