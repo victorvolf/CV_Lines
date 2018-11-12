@@ -35,7 +35,6 @@ table = Table(t[1].data)
 
 df = table.to_pandas()
 df = shuffle(df)
-print(df)
 
 classT = df['class'].to_frame()
 df = df.drop(['Name'], axis=1)
@@ -43,7 +42,7 @@ df = df.drop(['class'], axis=1)
 
 kf = cv.KFold(10)
 avg_acc = 0
-imp = [0] * 20
+imp = [0] * 25
 performance=[0, 0, 0, 0]
 
 for train_index, test_index in kf.split(df):
