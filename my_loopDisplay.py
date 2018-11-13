@@ -46,8 +46,10 @@ t = Table(names=('Name',
 				 'HeI Left',     'HeI 1',     'HeI 2',     'HeI Right',     'HeI v',
 				 'HeII Left',    'HeII 1',    'HeII 2',    'HeII Right',    'HeII v', 
 				 'ArIII Left',   'ArIII 1',   'ArIII 2',   'ArIII Right',   'ArIII v', 
+				 'x3 Left',     'x3 1',     'x3 2',     'x3 Right',     'x3 v', 
 				 'class'), 
-		  dtype=('U15','f4','f4','f4','f4','f4','f4','f4','f4','f4','f4','f4','f4',
+		  dtype=('U15','f4','f4','f4','f4','f4','f4','f4','f4',
+		         'f4','f4','f4','f4','f4','f4','f4','f4','f4',
 		         'f4','f4','f4','f4','f4','f4','f4','f4','f4','f4','f4','f4','f4','i2'))
 
 cv_t = fits.open('tableCV.fits', memmap = True)
@@ -84,9 +86,10 @@ def flux_var(wavelength):
     else:
         t_var = sum((1/iv[range_1]) * (wd[range_1] ** 2))
     
-    return t_flux1, t_flux2, t_var, t_fluxL, t_fluxR, _index
+    return t_flux1, t_flux2, t_var, t_fluxL, t_fluxR, _index        
 
-#w_total, f_total, ix = [0]*len(sdss), [0]*len(sdss), 0
+
+w_total, f_total, ix = [0]*len(sdss), [0]*len(sdss), 0
 for spec in sdss:
     hdul = fits.open(spec)
     if (all(hdul[1].data['flux']) == 0):
@@ -112,6 +115,9 @@ for spec in sdss:
         cls = 0
     h_a = flux_var(6561)
     h_b = flux_var(4862)
+    x1 = flux_var(5760)
+    x2 = flux_var(6900)
+    x3 = flux_var(4000)
     he1 = flux_var(5876)
     he2 = flux_var(4686)
     ar3 = flux_var(7135)
@@ -122,8 +128,9 @@ for spec in sdss:
 			  he1[3], he1[0], he1[1], he1[4], he1[2],
 			  he2[3], he2[0], he2[1], he2[4], he2[2],
 			  ar3[3], ar3[0], ar3[1], ar3[4], ar3[2],
+			  x1[3], x1[0], x1[1], x1[4], x1[2],
 			  cls])
-    
+			  
     '''plot_spectra(w,f)
     for e in (h_a, h_b, s_2, he1, he2):
         plot_spectra(w[e[4] - 50:e[4] + 50],

@@ -42,7 +42,7 @@ df = df.drop(['class'], axis=1)
 
 kf = cv.KFold(10)
 avg_acc = 0
-imp = [0] * 30
+imp = [0] * 26
 performance=[0, 0, 0, 0]
 
 for train_index, test_index in kf.split(df):
@@ -52,10 +52,7 @@ for train_index, test_index in kf.split(df):
     rfc = ens.RandomForestClassifier(n_estimators = 100,
                                      n_jobs = -1, 
                                      criterion = 'entropy',
-                                     max_features = None,
-                                     class_weight = 'balanced_subsample',
-                                     min_impurity_decrease = 0.0001,
-                                     oob_score = True)
+                                     max_features = 'sqrt')
     
     rfc.fit(xTrain.values, yTrain.values.ravel())
     predictions = rfc.predict(xTest)
@@ -74,3 +71,4 @@ print(' TP   FP  TN    FN')
 print(performance)
 print(avg_acc)
 print(imp)
+
