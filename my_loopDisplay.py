@@ -38,19 +38,18 @@ sdss = args.sdss
 start = time.time()
 
 t = Table(names=('Name',
-				 'H_alpha Left', 'H_alpha 1', 'H_alpha 2', 'H_alpha Right', 'H_alpha v',
-				 'H_beta Left',  'H_beta 1',  'H_beta 2',  'H_beta Right',  'H_beta v',
-				 'HeI Left',     'HeI 1',     'HeI 2',     'HeI Right',     'HeI v',
-				 'HeII Left',    'HeII 1',    'HeII 2',    'HeII Right',    'HeII v', 
-				 'ArIII Left',   'ArIII 1',   'ArIII 2',   'ArIII Right',   'ArIII v', 
-				 'I1 - G1','G1 - R1','class'), 
+				 'H_alpha Left', 'H_alpha 1', 'H_alpha 2', 'H_alpha Right', 'H_alpha v1',
+				 'H_beta Left',  'H_beta 1',  'H_beta 2',  'H_beta Right',  'H_beta v1',
+				 'HeI Left',     'HeI 1',     'HeI 2',     'HeI Right',     'HeI v1',
+				 'HeII Left',    'HeII 1',    'HeII 2',    'HeII Right',    'HeII v1',
+				 'ArIII Left',   'ArIII 1',   'ArIII 2',   'ArIII Right',   'ArIII v1',
+				 'max_flux index','class'), 
 		  dtype=('U15',
-                 'f4',
+                 'f4','f4','f4','f4','f4','f4',
                  'f4','f4','f4','f4','f4',
                  'f4','f4','f4','f4','f4',
                  'f4','f4','f4','f4','f4',
-                 'f4','f4','f4','f4','f4',
-		         'f4','f4','f4','f4','f4','f4','i2'))
+		         'f4','f4','f4','f4','f4','i2'))
 
 cv_t = fits.open('tableCV.fits', memmap = True)
 cv_names = Table(cv_t[1].data)['Name']
@@ -64,16 +63,11 @@ def plot_spectra(w, f):
     fhi = 1.1 * np.percentile(fb, 99.9)
 	
     rand = random.randint(0, 2)
-    if rand == 0:
-    #fig=plt.figure(figsize = (12, 6))
-        plt.plot(wb, fb, 'b', color = 'purple')
-    elif rand == 1:
-        plt.plot(wb, fb, 'b', color = 'red')
-    elif rand == 2:
-        plt.plot(wb, fb, 'b', color = 'olive')
-    #title = 'Lines of %s' %(spec[spec.rfind('/') + 1:])
-    #plt.title(title.replace('_', '-'))
-    #plt.xlabel('Wavelength [\AA]')
+    fig=plt.figure(figsize = (12, 6))
+    plt.plot(wb, fb, 'b', color = 'purple')
+    title = 'Lines of %s' %(spec[spec.rfind('/') + 1:])
+    plt.title(title.replace('_', '-'))
+    plt.xlabel('Wavelength [\AA]')
     
 
 def flux_var(wavelength):
@@ -84,23 +78,22 @@ def flux_var(wavelength):
     right_range = range(_index + 25, _index + 35)
     
     if 0 in iv[range_1]:
-        t_var = 0
+        t_var1 = 0
     else:
-        t_var = sum((1/iv[range_1]) * (wd[range_1] ** 2))
+        t_var1 = sum((1/iv[range_1]) * (wd[range_1] ** 2))
     t_flux1 = sum(wd[range_1] * f[range_1])
     t_flux2 = sum(wd[range_2] * f[range_2])
     t_fluxL = sum(wd[left_range] * f[left_range])
     t_fluxR = sum(wd[right_range] * f[right_range])
     
-    return t_flux1, t_flux2, t_var, t_fluxL, t_fluxR, _index        
-
-count = 0
+    return t_flux1, t_flux2, t_var1, t_fluxL, t_fluxR
+    
 for spec in sdss:
-    count += 1
     hdul = fits.open(spec)
     if (all(hdul[1].data['flux']) == 0):
         continue
         
+    metatable = hdul[2].data
     table = hdul[1].data
     iv = table['ivar']
     ok = iv > 0.
@@ -118,23 +111,17 @@ for spec in sdss:
     he1 = flux_var(5876)
     h_a = flux_var(6561)
     ar3 = flux_var(7135)
+    max_flux = max([(v,i) for i, v in enumerate(f)])
     
     t.add_row([spec[spec.find('-') + 1:spec.find('.')],
-              h_a[3], h_a[0], h_a[1], h_a[4], h_a[2],
-              h_b[3], h_b[0], h_b[1], h_b[4], h_b[2],
-              he1[3], he1[0], he1[1], he1[4], he1[2],
-              he2[3], he2[0], he2[1], he2[4], he2[2],
-              ar3[3], ar3[0], ar3[1], ar3[4], ar3[2],
-              hdul[2].data['SPEC2_I'] - hdul[2].data['SPEC2_G'], 
-              hdul[2].data['SPEC2_G'] - hdul[2].data['SPEC2_R'],
-			  cls])
-			  
-    '''plot_spectra(w,f)'''
+              h_a[1] - h_a[3], h_a[0], h_a[1], h_a[1] - h_a[4], h_a[2],
+              h_b[1] - h_b[3], h_b[0], h_b[1], h_b[1] - h_b[4], h_b[2],
+              he1[1] - he1[3], he1[0], he1[1], he1[1] - he1[4], he1[2],
+              he2[1] - he2[3], he2[0], he2[1], he2[1] - he2[4], he2[2],
+              ar3[1] - ar3[3], ar3[0], ar3[1], ar3[1] - ar3[4], ar3[2],
+			  w[max_flux[1]], cls])
     '''for e in (h_a, h_b, s_2, he1, he2):
         plot_spectra(w[e[4] - 50:e[4] + 50],
                      f[e[4] - 50:e[4] + 50])'''
-	
-#plt.show()
-#print(t)
 t.write("table.fits", "w")
 print("%.3fs" % (time.time() - start))
