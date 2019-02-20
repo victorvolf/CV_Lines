@@ -48,18 +48,18 @@ def plot_spectra(w, f, target):
 	
     rand = random.randint(0, 2)
     fig=plt.figure(figsize = (12, 6))
-    plt.plot(wb, fb, 'b', color = 'blue')
+    plt.plot(wb, fb, 'b', color = 'black')
     if target.values == 0:
-        title = 'Lines of non-CV %s' %(spec[spec.rfind('/') + 1:])
+        title = 'Lines of FP %s' %(spec[spec.rfind('/') + 1:])
     else:
-        title = 'Lines of CV %s' %(spec[spec.rfind('/') + 1:])
+        title = 'Lines of FN %s' %(spec[spec.rfind('/') + 1:])
     plt.title(title.replace('_', '-'))
     plt.xlabel('Wavelength [\AA]')
     plt.show()
 
 for spec in sdss:
     if not spec[spec.find('-') + 1:spec.find('.')] in list(negatives['name']):
-        continue
+       continue
     else:
         hdul = fits.open(spec)
         if (all(hdul[1].data['flux']) == 0):
@@ -67,7 +67,7 @@ for spec in sdss:
         table = hdul[1].data
         iv = table['ivar']
         ok = iv > 0.
-        
+            
         w  = subs.vac2air(10. ** table['loglam'])[ok]
         f  = table['flux'][ok]
         plot_spectra(w,f,negatives[negatives['name'] == spec[spec.find('-') + 1:spec.find('.')]]['class'])

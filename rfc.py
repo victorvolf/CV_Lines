@@ -5,8 +5,8 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-
 import astropy.io.fits as fits
+
 from astropy.table import Table, Column
 from trm import subs
 from itertools import zip_longest as longest
@@ -37,16 +37,44 @@ def perf_measure(y_actual, y_hat, nTest):
             FN += 1
     return TP, FP, TN, FN, names_fp, names_fn
 
-t = fits.open('table.fits', memmap = True)
+t = fits.open('table2.fits', memmap = True)
 table = Table(t[1].data)
-
 df = table.to_pandas()
+
+metadata = pd.read_csv('metadata.csv')
+plate = metadata[metadata['Plate'].astype(str).str.len() == 3]['Plate']
+plate = '0' + plate.astype(str)
+metadata.loc[0:len(plate) - 1, 'Plate'] = plate
+
+fiber1 = metadata[metadata['fiberID'].astype(str).str.len() == 1]['fiberID']
+fiber2 = metadata[metadata['fiberID'].astype(str).str.len() == 2]['fiberID']
+fiber3 = metadata[metadata['fiberID'].astype(str).str.len() == 3]['fiberID']
+fiber1 = '000' + fiber1.astype(str)
+fiber2 = '00' + fiber2.astype(str)
+fiber3 = '0' + fiber3.astype(str)
+metadata.loc[fiber1.index, 'fiberID'] = fiber1
+metadata.loc[fiber2.index, 'fiberID'] = fiber2
+metadata.loc[fiber3.index, 'fiberID'] = fiber3
+
+metadata['Name'] = metadata['Plate'].astype(str) + '-' + \
+		   metadata['mjd'].astype(str)   + '-' + \
+		   metadata['fiberID'].astype(str)
+metadata = metadata[metadata['Name'].isin(df['Name'])].reset_index(drop = True)
+	      
+df = df.set_index('Name').join(metadata.set_index('Name'))
+df = df[df['class_meta'] != 'GALAXY']
+df = df.fillna(0)
+df['u - g'] = df['psfmag_u'] - df['psfmag_g']
+df['i - z'] = df['psfmag_i'] - df['psfmag_z']
+df['r - i'] = df['psfmag_r'] - df['psfmag_i']
+df['g - r'] = df['psfmag_g'] - df['psfmag_r']
+
 df = shuffle(df)
-
 classT = df['class'].to_frame()
-names = df['Name'].to_frame()
-df = df.drop(['Name', 'class', 'H_beta v'], axis=1)
-
+names = pd.DataFrame(df.index.values)
+df = df.drop(['psfmag_u','psfmag_g','psfmag_r','psfmag_i','psfmag_z',
+	          'class', 'class_meta', 'fiberID', #'ArIII 2', 'HeI 1',
+	          'mjd', 'Plate'], axis=1)
 kf = cv.KFold(10)
 avg_acc = 0
 importances = defaultdict(float)
@@ -74,15 +102,12 @@ for train_index, test_index in kf.split(df):
     
     p = perf_measure(list(yTest['class']), predictions, nTest)
     for i in range(0, 4):
-        performance[i] += p[i]
-    for name in p[4]:		
-	    names_fp.append(name)
-    for name in p[5]:		
-	    names_fn.append(name)
+        performance[i] += p[i]		
+    names_fp.extend(p[4])
+    names_fn.extend(p[5])
     
     for feature, importance in zip(df.columns, rfc.feature_importances_):
         importances[feature] += importance
-    print(auc(fpr, tpr))
     avg_acc += auc(fpr, tpr)
 print(' TP   FP  TN    FN\n', performance)
 print(avg_acc / 10)

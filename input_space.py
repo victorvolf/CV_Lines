@@ -43,13 +43,14 @@ t = Table(names=('Name',
 				 'HeI Left',     'HeI 1',     'HeI 2',     'HeI Right',     'HeI v',
 				 'HeII Left',    'HeII 1',    'HeII 2',    'HeII Right',    'HeII v',
 				 'ArIII Left',   'ArIII 1',   'ArIII 2',   'ArIII Right',   'ArIII v',
-				 'class'), 
+				 'class'),
 		  dtype=('U15',
                  'f4','f4','f4','f4','f4',
                  'f4','f4','f4','f4','f4',
                  'f4','f4','f4','f4','f4',
                  'f4','f4','f4','f4','f4',
-		         'f4','f4','f4','f4','f4','i2'))
+		         'f4','f4','f4','f4','f4',
+                 'i2'))
 
 cv_t = fits.open('tableCV.fits', memmap = True)
 cv_names = Table(cv_t[1].data)['Name']
@@ -77,16 +78,16 @@ def flux_var(wavelength):
     left_range = range(_index - 35, _index - 25)
     right_range = range(_index + 25, _index + 35)
     
-    if 0 in iv[range_1]:
-        t_var1 = 0
+    if 0 in iv[range_2]:
+        t_var = 0
     else:
-        t_var1 = sum((1/iv[range_1]) * (wd[range_1] ** 2))
+        t_var = sum((1/iv[range_2]) * (wd[range_2] ** 2))
     t_flux1 = sum(wd[range_1] * f[range_1])
     t_flux2 = sum(wd[range_2] * f[range_2])
-    t_fluxL = sum(wd[left_range] * f[left_range])
-    t_fluxR = sum(wd[right_range] * f[right_range])
+    t_fluxL = t_flux2 - sum(wd[left_range] * f[left_range])
+    t_fluxR = t_flux2 - sum(wd[right_range] * f[right_range])
     
-    return t_flux1, t_flux2, t_var1, t_fluxL, t_fluxR
+    return t_flux1, t_flux2, t_var, t_fluxL, t_fluxR
     
 for spec in sdss:
     hdul = fits.open(spec)
@@ -111,11 +112,11 @@ for spec in sdss:
     ar3 = flux_var(7135)
     
     t.add_row([spec[spec.find('-') + 1:spec.find('.')],
-              h_a[1] - h_a[3], h_a[0], h_a[1], h_a[1] - h_a[4], h_a[2],
-              h_b[1] - h_b[3], h_b[0], h_b[1], h_b[1] - h_b[4], h_b[2],
-              he1[1] - he1[3], he1[0], he1[1], he1[1] - he1[4], he1[2],
-              he2[1] - he2[3], he2[0], he2[1], he2[1] - he2[4], he2[2],
-              ar3[1] - ar3[3], ar3[0], ar3[1], ar3[1] - ar3[4], ar3[2],
+              h_a[3], h_a[0], h_a[1], h_a[4], h_a[2],
+              h_b[3], h_b[0], h_b[1], h_b[4], h_b[2],
+              he1[3], he1[0], he1[1], he1[4], he1[2],
+              he2[3], he2[0], he2[1], he2[4], he2[2],
+              ar3[3], ar3[0], ar3[1], ar3[4], ar3[2],
 			  cls])
     '''for e in (h_a, h_b, s_2, he1, he2):
         plot_spectra(w[e[4] - 50:e[4] + 50],
