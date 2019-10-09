@@ -1,2 +1,2 @@
 # CV_Lines
-Sal
+Automatic Classification of Cataclysmic Variable Stars from the SDSS dataset
